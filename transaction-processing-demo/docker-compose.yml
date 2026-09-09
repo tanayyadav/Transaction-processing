@@ -1,0 +1,51 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: txdemo
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  go-processor:
+    build: ./go-processor
+    ports:
+      - "8082:8082"
+
+  java-validator:
+    build: ./java-validator
+    environment:
+      GO_PROCESSOR_URL: http://go-processor:8082/process
+      PORT: 8081
+    ports:
+      - "8081:8081"
+    depends_on:
+      - go-processor
+
+  node-api:
+    build: ./node-api
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: txdemo
+      JAVA_VALIDATOR_URL: http://java-validator:8081/validate
+      PORT: 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      java-validator:
+        condition: service_started

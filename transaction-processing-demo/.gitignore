@@ -1,0 +1,5 @@
+node_modules/
+java-validator/out/
+go-processor/processor*
+*.log
+.env
